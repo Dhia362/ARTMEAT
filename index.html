@@ -92,7 +92,27 @@ details.ord pre{margin:0;padding:12px 14px;white-space:pre-wrap;background:#fffb
 <div class="bar" id="bar" hidden><b id="barTxt"></b><button class="btn" id="barBtn">View order</button></div>
 <div class="overlay" id="ov"><div class="sheet" id="sheet"></div></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
+// ===== Firebase: paste your Firebase Web App config here =====
+var FIREBASE_CONFIG={
+  apiKey:"PASTE_API_KEY",
+  authDomain:"PASTE_PROJECT.firebaseapp.com",
+  projectId:"PASTE_PROJECT_ID",
+  storageBucket:"PASTE_PROJECT.appspot.com",
+  messagingSenderId:"PASTE_SENDER_ID",
+  appId:"PASTE_APP_ID"
+};
+var FIREBASE_READY=false;
+try{
+  if(FIREBASE_CONFIG.apiKey!=="PASTE_API_KEY"&&FIREBASE_CONFIG.projectId!=="PASTE_PROJECT_ID"){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    window.artmeatDb=firebase.firestore();
+    FIREBASE_READY=true;
+  }
+}catch(e){console.error("Firebase init failed",e)}
+
 // ===== Edit these for your business =====
 var SHOP_NAME="ARTMEAT";
 var CUR="DT";              // currency
@@ -247,10 +267,20 @@ function renderOrd(){
 }
 $("tabNew").onclick=function(){show("new")};$("tabOrd").onclick=function(){VIEWDAY="";show("ord")};
 lsLoad();refresh();
-if(window.claude&&window.claude.use){window.claude.use("db").then(function(db){
- if(!db)return;MODE=db;
- db.collection("days").onSnapshot(function(sn){var d={};sn.docs.forEach(function(x){var b=x.data();d[x.id]=JSON.parse(JSON.stringify((b&&b.orders)||[]))});DAYS=d;stat();refresh()},function(){MODE=null;lsLoad();stat();refresh()});
-},function(){})}
+if(FIREBASE_READY){
+  MODE={
+    doc:function(path){return window.artmeatDb.doc(path)},
+    collection:function(name){return window.artmeatDb.collection(name)}
+  };
+  MODE.collection("days").onSnapshot(function(sn){
+    var d={};
+    sn.docs.forEach(function(x){var b=x.data();d[x.id]=JSON.parse(JSON.stringify((b&&b.orders)||[]))});
+    DAYS=d;stat();refresh();
+  },function(err){
+    console.error("Firestore error",err);
+    MODE=null;lsLoad();stat();refresh();
+  });
+}
 </script>
 </body>
 </html>
